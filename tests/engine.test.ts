@@ -25,26 +25,22 @@ describe('Level 1: Sudoku Engine Foundation', () => {
   const easyBoard = parseBoardString(easyPreset.boardString);
 
   it('Challenge 1: Validates board correctly and detects duplicates', () => {
-    // Valid partial board
     const validRes = validateBoard(easyBoard);
     expect(validRes.isValid).toBe(true);
     expect(validRes.conflicts).toHaveLength(0);
 
-    // Duplicate in row
     const rowConflictBoard = cloneBoard(easyBoard);
     rowConflictBoard[0][1] = rowConflictBoard[0][0]; // Duplicate in row 0
     const rowRes = validateBoard(rowConflictBoard);
     expect(rowRes.isValid).toBe(false);
     expect(rowRes.conflicts.some(c => c.type === 'row')).toBe(true);
 
-    // Duplicate in column
     const colConflictBoard = cloneBoard(easyBoard);
     colConflictBoard[1][0] = rowConflictBoard[0][0]; // Duplicate in col 0
     const colRes = validateBoard(colConflictBoard);
     expect(colRes.isValid).toBe(false);
     expect(colRes.conflicts.some(c => c.type === 'col')).toBe(true);
 
-    // Serializes and parses back accurately
     const serialized = serializeBoard(easyBoard);
     expect(serialized).toHaveLength(81);
     expect(parseBoardString(serialized)).toEqual(easyBoard);
