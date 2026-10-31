@@ -508,17 +508,6 @@ export const App: React.FC = () => {
             isVisualizing={isVisualizing}
             isWorkerActive={isWorkerActive}
           />
-
-          {/* Minimalist Architecture Footer Note */}
-          <div className="bg-zinc-900/40 border border-zinc-800/60 rounded-xl p-3.5 text-xs text-zinc-500 font-mono flex flex-col gap-1.5">
-            <div className="flex items-center gap-1.5 font-semibold text-zinc-400">
-              <BookOpen className="w-3.5 h-3.5" />
-              <span>Engine Features</span>
-            </div>
-            <p className="text-[11px] text-zinc-500 leading-relaxed font-sans">
-              Knuth DLX exact cover, AC-3 constraint propagation, Web Worker off-thread streaming with backpressure, and search-based generator with 100% verified uniqueness.
-            </p>
-          </div>
         </div>
       </main>
 
