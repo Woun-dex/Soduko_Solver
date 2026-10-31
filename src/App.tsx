@@ -5,7 +5,6 @@ import {
   cloneBoard,
   parseBoardString,
   validateBoard,
-  getValidCandidates,
 } from './engine/board';
 import { PUZZLE_PRESETS } from './engine/puzzles';
 import { solverWorkerClient } from './workers/worker-client';
@@ -18,7 +17,6 @@ import { BookOpen } from 'lucide-react';
 
 interface HistorySnapshot {
   board: Board;
-  notes: Map<string, Set<number>>;
 }
 
 export const App: React.FC = () => {
@@ -31,28 +29,25 @@ export const App: React.FC = () => {
     parseBoardString(PUZZLE_PRESETS[0].boardString)
   );
 
-  // Level 2: Candidate Notes & Grid Interaction
-  const [notes, setNotes] = useState<Map<string, Set<number>>>(new Map());
   const [selectedCell, setSelectedCell] = useState<CellCoord | null>({ row: 0, col: 0 });
-  const [isNotesMode, setIsNotesMode] = useState<boolean>(false);
 
-  // Level 2: Undo / Redo History Stacks
+  // History Stacks (Undo / Redo)
   const [undoStack, setUndoStack] = useState<HistorySnapshot[]>([]);
   const [redoStack, setRedoStack] = useState<HistorySnapshot[]>([]);
 
-  // Level 3, 4, 5: Visualizer State & Algorithm
+  // Algorithm & Visualizer State
   const [algorithm, setAlgorithm] = useState<AlgorithmType>('dlx');
   const [isVisualizing, setIsVisualizing] = useState<boolean>(false);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [speedMs, setSpeedMs] = useState<number>(30);
 
-  // Level 6: Worker & Streaming Timeline
+  // Worker & Streaming Timeline
   const [timelineEvents, setTimelineEvents] = useState<SolverEvent[]>([]);
   const [currentStepIndex, setCurrentStepIndex] = useState<number>(-1);
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const [isWorkerActive] = useState<boolean>(typeof window !== 'undefined' && typeof Worker !== 'undefined');
 
-  // Level 7: Puzzle Generator State
+  // Generator State
   const [isGeneratingPuzzle, setIsGeneratingPuzzle] = useState<boolean>(false);
 
   // Status flags
@@ -69,16 +64,10 @@ export const App: React.FC = () => {
   const validation = validateBoard(board);
   const conflicts = validation.conflicts;
 
-  const cloneNotes = (source: Map<string, Set<number>>): Map<string, Set<number>> => {
-    const next = new Map<string, Set<number>>();
-    source.forEach((val, key) => next.set(key, new Set(val)));
-    return next;
-  };
-
   const pushHistory = useCallback(() => {
-    setUndoStack(prev => [...prev, { board: cloneBoard(board), notes: cloneNotes(notes) }]);
+    setUndoStack(prev => [...prev, { board: cloneBoard(board) }]);
     setRedoStack([]);
-  }, [board, notes]);
+  }, [board]);
 
   // Load Preset
   const handlePresetChange = (presetId: string) => {
@@ -89,13 +78,12 @@ export const App: React.FC = () => {
     const parsed = parseBoardString(preset.boardString);
     setInitialBoard(cloneBoard(parsed));
     setBoard(cloneBoard(parsed));
-    setNotes(new Map());
     setUndoStack([]);
     setRedoStack([]);
     resetVisualizer();
   };
 
-  // Generate Unique Puzzle (Level 7)
+  // Generate Unique Puzzle
   const handleGeneratePuzzle = async (difficulty: PuzzleDifficulty) => {
     setIsGeneratingPuzzle(true);
     resetVisualizer();
@@ -104,7 +92,6 @@ export const App: React.FC = () => {
       setInitialBoard(cloneBoard(generated.board));
       setBoard(cloneBoard(generated.board));
       setSelectedPresetId('custom-generated');
-      setNotes(new Map());
       setUndoStack([]);
       setRedoStack([]);
     } catch (e) {
@@ -119,7 +106,6 @@ export const App: React.FC = () => {
     const empty = createEmptyBoard();
     setInitialBoard(empty);
     setBoard(empty);
-    setNotes(new Map());
     setUndoStack([]);
     setRedoStack([]);
     resetVisualizer();
@@ -144,7 +130,7 @@ export const App: React.FC = () => {
     setBoard(cloneBoard(initialBoard));
   };
 
-  // Cell Value / Note Input
+  // Cell Value Input
   const handleNumberInput = (num: number) => {
     if (!selectedCell || isVisualizing) return;
     const { row, col } = selectedCell;
@@ -152,36 +138,12 @@ export const App: React.FC = () => {
     if (initialBoard[row][col] !== 0) return;
 
     pushHistory();
-    const cellKey = `${row},${col}`;
 
-    if (isNotesMode) {
-      setNotes(prev => {
-        const next = cloneNotes(prev);
-        const cellNotes = next.get(cellKey) || new Set<number>();
-        if (cellNotes.has(num)) {
-          cellNotes.delete(num);
-        } else {
-          cellNotes.add(num);
-        }
-        if (cellNotes.size === 0) {
-          next.delete(cellKey);
-        } else {
-          next.set(cellKey, cellNotes);
-        }
-        return next;
-      });
-    } else {
-      setBoard(prev => {
-        const next = cloneBoard(prev);
-        next[row][col] = next[row][col] === num ? 0 : num;
-        return next;
-      });
-      setNotes(prev => {
-        const next = cloneNotes(prev);
-        next.delete(cellKey);
-        return next;
-      });
-    }
+    setBoard(prev => {
+      const next = cloneBoard(prev);
+      next[row][col] = next[row][col] === num ? 0 : num;
+      return next;
+    });
   };
 
   // Erase Cell
@@ -191,60 +153,32 @@ export const App: React.FC = () => {
     if (initialBoard[row][col] !== 0) return;
 
     pushHistory();
-    const cellKey = `${row},${col}`;
 
     setBoard(prev => {
       const next = cloneBoard(prev);
       next[row][col] = 0;
       return next;
     });
-
-    setNotes(prev => {
-      const next = cloneNotes(prev);
-      next.delete(cellKey);
-      return next;
-    });
-  };
-
-  // Auto Fill Candidate Notes
-  const handleAutoFillNotes = () => {
-    if (isVisualizing) return;
-    pushHistory();
-
-    const newNotes = new Map<string, Set<number>>();
-    for (let r = 0; r < 9; r++) {
-      for (let c = 0; c < 9; c++) {
-        if (board[r][c] === 0) {
-          const candidates = getValidCandidates(board, r, c);
-          if (candidates.length > 0) {
-            newNotes.set(`${r},${c}`, new Set(candidates));
-          }
-        }
-      }
-    }
-    setNotes(newNotes);
   };
 
   // Undo / Redo
   const handleUndo = useCallback(() => {
     if (undoStack.length === 0 || isVisualizing) return;
     const previous = undoStack[undoStack.length - 1];
-    setRedoStack(prev => [...prev, { board: cloneBoard(board), notes: cloneNotes(notes) }]);
+    setRedoStack(prev => [...prev, { board: cloneBoard(board) }]);
     setUndoStack(prev => prev.slice(0, -1));
     setBoard(cloneBoard(previous.board));
-    setNotes(cloneNotes(previous.notes));
-  }, [undoStack, board, notes, isVisualizing]);
+  }, [undoStack, board, isVisualizing]);
 
   const handleRedo = useCallback(() => {
     if (redoStack.length === 0 || isVisualizing) return;
     const nextSnapshot = redoStack[redoStack.length - 1];
-    setUndoStack(prev => [...prev, { board: cloneBoard(board), notes: cloneNotes(notes) }]);
+    setUndoStack(prev => [...prev, { board: cloneBoard(board) }]);
     setRedoStack(prev => prev.slice(0, -1));
     setBoard(cloneBoard(nextSnapshot.board));
-    setNotes(cloneNotes(nextSnapshot.notes));
-  }, [redoStack, board, notes, isVisualizing]);
+  }, [redoStack, board, isVisualizing]);
 
-  // Level 6: Start Visualization with Worker Streaming & Backpressure
+  // Start Visualization with Worker Streaming & Backpressure
   const handleTogglePlay = () => {
     if (!isVisualizing) {
       setIsVisualizing(true);
@@ -369,12 +303,6 @@ export const App: React.FC = () => {
         return;
       }
 
-      if (e.key === 'n' || e.key === 'N') {
-        e.preventDefault();
-        setIsNotesMode(prev => !prev);
-        return;
-      }
-
       if (e.key >= '1' && e.key <= '9') {
         e.preventDefault();
         handleNumberInput(parseInt(e.key, 10));
@@ -411,7 +339,7 @@ export const App: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedCell, isVisualizing, isNotesMode, board, initialBoard, undoStack, redoStack, handleUndo, handleRedo]);
+  }, [selectedCell, isVisualizing, board, initialBoard, undoStack, redoStack, handleUndo, handleRedo]);
 
   const currentEvent =
     isVisualizing && currentStepIndex >= 0 && currentStepIndex < timelineEvents.length
@@ -438,7 +366,7 @@ export const App: React.FC = () => {
 
           <div className="flex items-center gap-2">
             <span className="hidden sm:inline-flex text-[11px] font-mono text-zinc-500">
-              [1-9] Place • [N] Notes • [Ctrl+Z] Undo • [Arrows] Move
+              [1-9] Place • [Backspace] Clear • [Ctrl+Z] Undo • [Arrows] Move
             </span>
           </div>
         </div>
@@ -451,7 +379,6 @@ export const App: React.FC = () => {
           <SudokuGrid
             board={board}
             initialBoard={initialBoard}
-            notes={notes}
             selectedCell={selectedCell}
             conflicts={conflicts}
             currentEvent={currentEvent}
@@ -462,13 +389,10 @@ export const App: React.FC = () => {
           <Numpad
             onNumberInput={handleNumberInput}
             onErase={handleErase}
-            isNotesMode={isNotesMode}
-            onToggleNotesMode={() => setIsNotesMode(p => !p)}
             onUndo={handleUndo}
             onRedo={handleRedo}
             canUndo={undoStack.length > 0}
             canRedo={redoStack.length > 0}
-            onAutoFillNotes={handleAutoFillNotes}
             disabled={isVisualizing}
           />
         </div>
@@ -508,6 +432,17 @@ export const App: React.FC = () => {
             isVisualizing={isVisualizing}
             isWorkerActive={isWorkerActive}
           />
+
+          {/* Minimalist Architecture Note */}
+          <div className="bg-zinc-900/40 border border-zinc-800/60 rounded-xl p-3.5 text-xs text-zinc-500 font-mono flex flex-col gap-1.5">
+            <div className="flex items-center gap-1.5 font-semibold text-zinc-400">
+              <BookOpen className="w-3.5 h-3.5" />
+              <span>Engine Architecture</span>
+            </div>
+            <p className="text-[11px] text-zinc-500 leading-relaxed font-sans">
+              Knuth DLX exact cover, AC-3 constraint propagation, Web Worker off-thread streaming with backpressure, and search-based generator with 100% verified uniqueness.
+            </p>
+          </div>
         </div>
       </main>
 

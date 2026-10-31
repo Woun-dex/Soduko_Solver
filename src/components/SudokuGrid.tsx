@@ -5,7 +5,6 @@ import { BOX_SIZE } from '../engine/board';
 interface SudokuGridProps {
   board: Board;
   initialBoard: Board;
-  notes: Map<string, Set<number>>;
   selectedCell: CellCoord | null;
   conflicts: CellConflict[];
   currentEvent: SolverEvent | null;
@@ -16,7 +15,6 @@ interface SudokuGridProps {
 export const SudokuGrid: React.FC<SudokuGridProps> = ({
   board,
   initialBoard,
-  notes,
   selectedCell,
   conflicts,
   currentEvent,
@@ -114,7 +112,6 @@ export const SudokuGrid: React.FC<SudokuGridProps> = ({
             }
 
             const cellKey = `${r},${c}`;
-            const cellNotes = notes.get(cellKey);
 
             const accessibleLabel = `Row ${r + 1}, Column ${c + 1}${
               val > 0 ? `, value ${val}` : ', empty'
@@ -137,22 +134,9 @@ export const SudokuGrid: React.FC<SudokuGridProps> = ({
               >
                 {val !== 0 ? (
                   <span className="leading-none">{val}</span>
-                ) : cellNotes && cellNotes.size > 0 ? (
-                  <div className="grid grid-cols-3 grid-rows-3 w-full h-full p-1 pointer-events-none text-[8px] sm:text-[10px] text-zinc-500 font-mono leading-none">
-                    {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
-                      <span
-                        key={num}
-                        className={`flex items-center justify-center ${
-                          cellNotes.has(num) ? 'text-zinc-300 font-medium' : 'text-transparent'
-                        }`}
-                      >
-                        {num}
-                      </span>
-                    ))}
-                  </div>
                 ) : null}
 
-                {/* Subtle initial clue indicator in top-left */}
+                {/* Subtle initial clue indicator */}
                 {isInitial && (
                   <span
                     aria-hidden="true"

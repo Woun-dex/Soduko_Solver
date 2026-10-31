@@ -2,6 +2,8 @@
 
 A complete 8-level Sudoku engineering project built with React 18, TypeScript, Tailwind CSS, Web Workers, and Vitest.
 
+> 📖 **Deep-Dive Engineering Guide**: For the complete mental model, algorithmic breakdown (CSP, AC-3, DLX), and step-by-step tutorial, see [**`SUDOKU_ARCHITECTURE_AND_MENTAL_MODEL.md`**](./SUDOKU_ARCHITECTURE_AND_MENTAL_MODEL.md).
+
 ---
 
 ## 🎯 Architecture & Implemented Levels

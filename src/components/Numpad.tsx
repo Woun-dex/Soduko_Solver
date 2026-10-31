@@ -1,35 +1,29 @@
 import React from 'react';
-import { Delete, Edit3, RotateCcw, RotateCw, Sparkles } from 'lucide-react';
+import { Delete, RotateCcw, RotateCw } from 'lucide-react';
 
 interface NumpadProps {
   onNumberInput: (num: number) => void;
   onErase: () => void;
-  isNotesMode: boolean;
-  onToggleNotesMode: () => void;
   onUndo: () => void;
   onRedo: () => void;
   canUndo: boolean;
   canRedo: boolean;
-  onAutoFillNotes: () => void;
   disabled: boolean;
 }
 
 export const Numpad: React.FC<NumpadProps> = ({
   onNumberInput,
   onErase,
-  isNotesMode,
-  onToggleNotesMode,
   onUndo,
   onRedo,
   canUndo,
   canRedo,
-  onAutoFillNotes,
   disabled,
 }) => {
   return (
     <div className="flex flex-col gap-2.5 w-full max-w-[480px] sm:max-w-[500px] mx-auto select-none">
       {/* Action Toolbar */}
-      <div className="grid grid-cols-5 gap-1.5">
+      <div className="grid grid-cols-3 gap-2">
         <button
           type="button"
           onClick={onUndo}
@@ -50,33 +44,6 @@ export const Numpad: React.FC<NumpadProps> = ({
         >
           <RotateCw className="w-3.5 h-3.5" />
           <span>Redo</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={onToggleNotesMode}
-          disabled={disabled}
-          className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg border transition text-xs font-medium ${
-            isNotesMode
-              ? 'bg-zinc-200 border-zinc-100 text-zinc-900 shadow-sm'
-              : 'bg-zinc-900 hover:bg-zinc-800 border-zinc-800 text-zinc-300'
-          }`}
-          title="Toggle Candidate Notes (N)"
-        >
-          <Edit3 className="w-3.5 h-3.5" />
-          <span>Notes</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={onAutoFillNotes}
-          disabled={disabled}
-          className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 disabled:opacity-30 transition text-xs font-medium"
-          title="Auto-fill candidate notes"
-        >
-          <Sparkles className="w-3.5 h-3.5 text-zinc-400" />
-          <span className="hidden sm:inline">Auto Notes</span>
-          <span className="sm:hidden">Auto</span>
         </button>
 
         <button
